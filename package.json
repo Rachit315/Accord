@@ -1,0 +1,14 @@
+{
+  "name": "accord-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix accord-app",
+    "build": "npm run build --prefix accord-app",
+    "start": "npm run start --prefix accord-app",
+    "lint": "npm run lint --prefix accord-app"
+  },
+  "dependencies": {
+    "next": "16.2.9"
+  }
+}
