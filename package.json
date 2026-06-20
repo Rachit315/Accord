@@ -13,5 +13,8 @@
   },
   "dependencies": {
     "next": "16.2.9"
+  },
+  "overrides": {
+    "node-domexception": "file:./node-domexception-shim"
   }
 }
