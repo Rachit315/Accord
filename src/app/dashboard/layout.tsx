@@ -3,6 +3,7 @@
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { UpgradeModal } from "@/components/upgrade/upgrade-modal";
 import { OnboardingOverlay } from "@/components/dashboard/onboarding-overlay";
+import { AlarmManager } from "@/components/dashboard/alarm-manager";
 
 export default function DashboardLayout({
   children,
@@ -19,6 +20,7 @@ export default function DashboardLayout({
       </main>
       <UpgradeModal />
       <OnboardingOverlay />
+      <AlarmManager />
     </div>
   );
 }

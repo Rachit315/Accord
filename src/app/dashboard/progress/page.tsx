@@ -9,18 +9,9 @@ import {
   TrendingUp,
   Award,
   Calendar,
+  Lock,
 } from "lucide-react";
-import {
-  getOverallStats,
-  getWeeklyAlignmentData,
-  getMonthlyAlignmentData,
-  getActivityPerformance,
-  getDeviationAnalysis,
-  getHeatmapData,
-  mockWeeklyReport,
-  mockAchievements,
-  calculateStreak,
-} from "@/lib/mock-data";
+import { useApp } from "@/contexts/app-context";
 import {
   AreaChart,
   Area,
@@ -35,47 +26,6 @@ import {
 } from "recharts";
 import { useState } from "react";
 
-const stats = getOverallStats();
-const weeklyData = getWeeklyAlignmentData();
-const monthlyData = getMonthlyAlignmentData();
-const performanceData = getActivityPerformance();
-const deviationData = getDeviationAnalysis();
-const heatmapData = getHeatmapData();
-const streak = calculateStreak();
-const report = mockWeeklyReport;
-const achievements = mockAchievements;
-
-const statCards = [
-  {
-    icon: Target,
-    label: "Alignment Score",
-    value: `${stats.alignmentScore}%`,
-    color: "#67C587",
-    desc: "Overall average",
-  },
-  {
-    icon: Flame,
-    label: "Current Streak",
-    value: `${stats.currentStreak}`,
-    color: "#E89A73",
-    desc: "days",
-  },
-  {
-    icon: Activity,
-    label: "Activities",
-    value: `${stats.totalActivities}`,
-    color: "#3B82F6",
-    desc: "Active routines",
-  },
-  {
-    icon: ClipboardCheck,
-    label: "Entries Logged",
-    value: `${stats.totalEntries}`,
-    color: "#8B5CF6",
-    desc: "Total completions",
-  },
-];
-
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
@@ -86,9 +36,10 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
   );
 }
 
-// Heatmap component
-function Heatmap() {
-  const data = heatmapData;
+// Heatmap component accepting dynamic data
+function Heatmap({ data }: { data: { date: string; value: number }[] }) {
+  if (data.length === 0) return null;
+
   const weeks: { date: string; value: number }[][] = [];
   let currentWeek: { date: string; value: number }[] = [];
 
@@ -177,9 +128,81 @@ function Heatmap() {
   );
 }
 
+function ProgressSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div>
+        <div className="h-8 w-48 bg-muted rounded mb-2" />
+        <div className="h-4 w-72 bg-muted rounded" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 pt-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-28 bg-muted rounded-xl" />
+        ))}
+      </div>
+
+      <div className="h-80 bg-muted rounded-xl" />
+      
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="h-80 bg-muted rounded-xl" />
+        <div className="h-80 bg-muted rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
 export default function ProgressPage() {
+  const { stats: computedStats, isLoading, user, setShowUpgradeModal } = useApp();
   const [chartRange, setChartRange] = useState<"weekly" | "monthly">("weekly");
+
+  if (isLoading) {
+    return <ProgressSkeleton />;
+  }
+
+  const {
+    overallStats: stats,
+    weeklyAlignmentData: weeklyData,
+    monthlyAlignmentData: monthlyData,
+    activityPerformance: performanceData,
+    deviationAnalysis: deviationData,
+    heatmapData,
+    weeklyReport: report,
+    achievements,
+  } = computedStats;
+
   const chartData = chartRange === "weekly" ? weeklyData : monthlyData;
+
+  const statCards = [
+    {
+      icon: Target,
+      label: "Alignment Score",
+      value: `${stats.alignmentScore}%`,
+      color: "#67C587",
+      desc: "Overall average",
+    },
+    {
+      icon: Flame,
+      label: "Current Streak",
+      value: `${stats.currentStreak}`,
+      color: "#E89A73",
+      desc: "days",
+    },
+    {
+      icon: Activity,
+      label: "Activities",
+      value: `${stats.totalActivities}`,
+      color: "#3B82F6",
+      desc: "Active routines",
+    },
+    {
+      icon: ClipboardCheck,
+      label: "Entries Logged",
+      value: `${stats.totalEntries}`,
+      color: "#8B5CF6",
+      desc: "Total completions",
+    },
+  ];
 
   if (stats.totalEntries === 0) {
     return (
@@ -257,17 +280,29 @@ export default function ProgressPage() {
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Alignment Trend</h2>
           <div className="flex rounded-lg border border-border bg-background/50 p-0.5">
-            {(["weekly", "monthly"] as const).map((range) => (
-              <button
-                key={range}
-                onClick={() => setChartRange(range)}
-                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                  chartRange === range ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {range === "weekly" ? "7 Days" : "30 Days"}
-              </button>
-            ))}
+            {(["weekly", "monthly"] as const).map((range) => {
+              const isLocked = range === "monthly" && user.plan === "free";
+              return (
+                <button
+                  key={range}
+                  onClick={() => {
+                    if (isLocked) {
+                      setShowUpgradeModal(true);
+                    } else {
+                      setChartRange(range);
+                    }
+                  }}
+                  className={`inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                    chartRange === range && !isLocked
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {range === "weekly" ? "7 Days" : "30 Days"}
+                  {isLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
+                </button>
+              );
+            })}
           </div>
         </div>
         <ResponsiveContainer width="100%" height={260}>
@@ -354,7 +389,7 @@ export default function ProgressPage() {
           <h2 className="text-lg font-semibold">90-Day Consistency</h2>
         </div>
         <div className="overflow-x-auto">
-          <Heatmap />
+          <Heatmap data={heatmapData} />
         </div>
       </motion.div>
 
@@ -373,12 +408,12 @@ export default function ProgressPage() {
         {/* Streak display */}
         <div className="mb-6 flex items-center gap-6">
           <div className="text-center">
-            <div className="text-4xl font-bold text-secondary">{streak.current}</div>
+            <div className="text-4xl font-bold text-secondary">{stats.currentStreak}</div>
             <div className="text-xs text-muted-foreground">Current Streak</div>
           </div>
           <div className="h-12 w-px bg-border" />
           <div className="text-center">
-            <div className="text-4xl font-bold text-muted-foreground">{streak.longest}</div>
+            <div className="text-4xl font-bold text-muted-foreground">{stats.longestStreak}</div>
             <div className="text-xs text-muted-foreground">Longest Streak</div>
           </div>
         </div>
@@ -434,7 +469,7 @@ export default function ProgressPage() {
             <div className="text-xs text-muted-foreground">Consistency</div>
             <div className="mt-1 text-lg font-bold">{report.consistencyScore}%</div>
             <div className="flex items-center gap-1 text-xs text-primary">
-              <TrendingUp className="h-3 w-3" /> +{report.comparedToPreviousWeek}% vs last week
+              <TrendingUp className="h-3 w-3" /> {report.comparedToPreviousWeek >= 0 ? `+${report.comparedToPreviousWeek}` : report.comparedToPreviousWeek}% vs last week
             </div>
           </div>
         </div>

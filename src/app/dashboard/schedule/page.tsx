@@ -34,7 +34,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 export default function SchedulePage() {
-  const { activities, deleteActivity, archiveActivity, reorderActivities } = useApp();
+  const { activities, deleteActivity, archiveActivity, reorderActivities, isLoading } = useApp();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -80,6 +80,25 @@ export default function SchedulePage() {
   const handleDragEnd = () => {
     setDraggedIndex(null);
   };
+
+  if (isLoading && activities.length === 0) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-8 w-48 bg-muted rounded mb-2" />
+            <div className="h-4 w-72 bg-muted rounded" />
+          </div>
+          <div className="h-10 w-28 bg-muted rounded-xl" />
+        </div>
+        <div className="space-y-4 pt-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 bg-muted rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -196,11 +215,11 @@ export default function SchedulePage() {
                               </span>
                               {activity.reminderEnabled ? (
                                 <span className="inline-flex items-center gap-1 text-xs text-primary">
-                                  <Bell className="h-3 w-3" /> Reminder
+                                  <Bell className="h-3 w-3" /> Alarm On
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                                  <BellOff className="h-3 w-3" /> No reminder
+                                  <BellOff className="h-3 w-3" /> Alarm Off
                                 </span>
                               )}
                             </div>

@@ -336,7 +336,7 @@ export const pricingPlans: PricingPlan[] = [
   {
     id: "pro",
     name: "Pro",
-    price: 9,
+    price: 6,
     interval: "month",
     description: "For those serious about building better habits.",
     features: [

@@ -39,7 +39,7 @@ const statusConfig: Record<EntryStatus, { label: string; color: string; bgColor:
 };
 
 export default function DailyEntryPage() {
-  const { activities, todayEntries, markDone, skipEntry } = useApp();
+  const { activities, todayEntries, markDone, skipEntry, isLoading } = useApp();
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -47,6 +47,27 @@ export default function DailyEntryPage() {
     day: "numeric",
     year: "numeric",
   });
+
+  if (isLoading && todayEntries.length === 0) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div>
+          <div className="h-8 w-48 bg-muted rounded mb-2" />
+          <div className="h-4 w-60 bg-muted rounded" />
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="h-20 bg-muted rounded-xl" />
+          <div className="h-20 bg-muted rounded-xl" />
+          <div className="h-20 bg-muted rounded-xl" />
+        </div>
+        <div className="space-y-4 pt-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-24 bg-muted rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const completed = todayEntries.filter((e) => e.status !== "pending" && e.status !== "skipped").length;
   const total = todayEntries.length;

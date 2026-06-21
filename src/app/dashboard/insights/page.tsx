@@ -12,11 +12,19 @@ import {
   Moon,
   Sparkles,
   Lightbulb,
+  Crown,
 } from "lucide-react";
-import { mockInsights } from "@/lib/mock-data";
+import { useApp } from "@/contexts/app-context";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  Trophy, AlertTriangle, TrendingUp, XCircle, Calendar, Sun, Flame, Moon,
+  Trophy,
+  AlertTriangle,
+  TrendingUp,
+  XCircle,
+  Calendar,
+  Sun,
+  Flame,
+  Moon,
 };
 
 const typeConfig = {
@@ -26,7 +34,70 @@ const typeConfig = {
   achievement: { label: "Achievement", bgBadge: "bg-chart-5/10 text-chart-5" },
 };
 
+function InsightsSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div>
+        <div className="h-8 w-48 bg-muted rounded mb-2" />
+        <div className="h-4 w-72 bg-muted rounded" />
+      </div>
+
+      <div className="h-40 bg-muted rounded-xl mt-6" />
+
+      <div className="grid gap-4 sm:grid-cols-2 pt-6">
+        {[1, 2].map((i) => (
+          <div key={i} className="h-36 bg-muted rounded-xl" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function InsightsPage() {
+  const { stats, isLoading, user, setShowUpgradeModal } = useApp();
+
+  if (isLoading) {
+    return <InsightsSkeleton />;
+  }
+
+  if (user.plan === "free") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="mb-8">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-bold sm:text-3xl">Insights</h1>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            AI-powered analysis of your routine patterns
+          </p>
+        </div>
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/50 bg-card/20 py-24 text-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Sparkles className="h-8 w-8" />
+          </div>
+          <h3 className="mb-2 text-xl font-semibold">AI-Powered Insights is a Pro Feature</h3>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Upgrade to Accord Pro to unlock advanced AI-powered analysis of your daily habits, routine patterns, and smart improvement suggestions.
+          </p>
+          <button
+            onClick={() => setShowUpgradeModal(true)}
+            className="mt-6 inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90"
+          >
+            <Crown className="h-4 w-4 text-secondary" />
+            Upgrade to Pro for $6/mo
+          </button>
+        </div>
+      </motion.div>
+    );
+  }
+
+  const { insights } = stats;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -43,7 +114,7 @@ export default function InsightsPage() {
         </p>
       </div>
 
-      {mockInsights.length === 0 ? (
+      {insights.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/50 bg-card/20 py-24 text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <Lightbulb className="h-8 w-8" />
@@ -75,10 +146,7 @@ export default function InsightsPage() {
               <div>
                 <h2 className="mb-1 text-lg font-semibold">Weekly Summary</h2>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Your routine alignment has been steadily improving. This week, you achieved an average
-                  alignment score of <span className="font-medium text-primary">87%</span>, up from 74% last week.
-                  Your mornings are strong, but evenings need attention. Focus on keeping Dinner and Sleep
-                  closer to their ideal times for the biggest improvement.
+                  Your routine alignment is based on active database logs. Review the automatically generated suggestions below to identify deviation trends, high-performing activities, and routine streaks. Keep logging entries to refine these insights.
                 </p>
               </div>
             </div>
@@ -86,9 +154,9 @@ export default function InsightsPage() {
 
           {/* Insight Cards Grid */}
           <div className="grid gap-4 sm:grid-cols-2">
-            {mockInsights.map((insight, index) => {
+            {insights.map((insight, index) => {
               const IconComponent = iconMap[insight.icon] || Sparkles;
-              const typeInfo = typeConfig[insight.type];
+              const typeInfo = typeConfig[insight.type as keyof typeof typeConfig] || typeConfig.trend;
 
               return (
                 <motion.div

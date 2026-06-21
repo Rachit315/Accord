@@ -33,7 +33,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { getActivityDetail } from "@/lib/mock-data";
+import { useApp } from "@/contexts/app-context";
+import { getActivityDetailFromHistory } from "@/lib/stats";
 import { formatTime } from "@/lib/utils";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -43,9 +44,25 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 export default function ActivityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const detail = getActivityDetail(id);
+  const { activities, allEntries, isLoading } = useApp();
 
-  if (!detail) {
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-6 w-16 bg-muted rounded mb-4" />
+        <div className="h-10 w-64 bg-muted rounded mb-6" />
+        <div className="grid grid-cols-3 gap-3">
+          <div className="h-24 bg-muted rounded-xl" />
+          <div className="h-24 bg-muted rounded-xl" />
+          <div className="h-24 bg-muted rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  const activity = activities.find((a) => a.id === id);
+
+  if (!activity) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="text-center">
@@ -56,7 +73,8 @@ export default function ActivityDetailPage({ params }: { params: Promise<{ id: s
     );
   }
 
-  const { activity, performanceScore, completionRate, averageDelay, weeklyTrend, monthlyTrend, history } = detail;
+  const detail = getActivityDetailFromHistory(activity, allEntries);
+  const { performanceScore, completionRate, averageDelay, weeklyTrend, monthlyTrend, history } = detail;
   const IconComponent = iconMap[activity.icon] || Clock;
 
   return (

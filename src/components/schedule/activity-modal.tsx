@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Clock, Bell } from "lucide-react";
 import { useApp } from "@/contexts/app-context";
 import { Activity } from "@/lib/types";
+import { formatTime } from "@/lib/utils";
+import { MaterialTimePicker } from "./material-time-picker";
 
 const activityIcons = [
   "Sunrise", "Brain", "Coffee", "BookOpen", "Dumbbell",
@@ -29,7 +31,7 @@ interface ActivityModalProps {
 }
 
 export function ActivityModal({ open, onClose, activity }: ActivityModalProps) {
-  const { addActivity, updateActivity } = useApp();
+  const { addActivity, updateActivity, activities } = useApp();
   const isEditing = !!activity;
 
   const [title, setTitle] = useState("");
@@ -39,6 +41,7 @@ export function ActivityModal({ open, onClose, activity }: ActivityModalProps) {
   const [icon, setIcon] = useState("Sunrise");
   const [color, setColor] = useState("#67C587");
   const [reminder, setReminder] = useState(true);
+  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     if (activity) {
@@ -63,6 +66,19 @@ export function ActivityModal({ open, onClose, activity }: ActivityModalProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+
+    // Check for duplicate activity name (excluding current activity if editing)
+    const isDuplicate = activities.some(
+      (a) =>
+        !a.archived &&
+        a.title.toLowerCase().trim() === title.toLowerCase().trim() &&
+        (!isEditing || a.id !== activity?.id)
+    );
+
+    if (isDuplicate) {
+      alert("You cannot make an activity of the same name. Two activities of the same name cannot happen.");
+      return;
+    }
 
     if (isEditing && activity) {
       updateActivity(activity.id, {
@@ -151,12 +167,14 @@ export function ActivityModal({ open, onClose, activity }: ActivityModalProps) {
                       <Clock className="mr-1 inline h-3.5 w-3.5" />
                       Ideal Time
                     </label>
-                    <input
-                      type="time"
-                      value={idealTime}
-                      onChange={(e) => setIdealTime(e.target.value)}
-                      className="h-11 w-full rounded-xl border border-border bg-background/50 px-4 text-sm outline-none transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPicker(true)}
+                      className="h-11 w-full rounded-xl border border-border bg-background/50 px-4 text-sm text-left outline-none transition-colors hover:border-primary/30 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 flex items-center justify-between text-foreground w-full"
+                    >
+                      <span>{formatTime(idealTime)}</span>
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                    </button>
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium">Flexibility (min)</label>
@@ -211,11 +229,11 @@ export function ActivityModal({ open, onClose, activity }: ActivityModalProps) {
                   </div>
                 </div>
 
-                {/* Reminder */}
+                {/* Alarm */}
                 <div className="flex items-center justify-between rounded-xl border border-border bg-background/50 px-4 py-3">
                   <div className="flex items-center gap-2">
                     <Bell className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Daily Reminder</span>
+                    <span className="text-sm font-medium">Enable Alarm</span>
                   </div>
                   <button
                     type="button"
@@ -242,6 +260,12 @@ export function ActivityModal({ open, onClose, activity }: ActivityModalProps) {
               </form>
             </div>
           </motion.div>
+          <MaterialTimePicker
+            open={showPicker}
+            value={idealTime}
+            onChange={(val) => setIdealTime(val)}
+            onClose={() => setShowPicker(false)}
+          />
         </>
       )}
     </AnimatePresence>
