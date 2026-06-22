@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
@@ -37,49 +37,90 @@ export default function SchedulePage() {
   const { activities, deleteActivity, archiveActivity, reorderActivities, isLoading } = useApp();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
-  const activeActivities = activities
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    activityId: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  // Drag state — all local, no server calls until drop
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [localOrder, setLocalOrder] = useState<Activity[] | null>(null);
+  const draggedIndexRef = useRef<number | null>(null);
+
+  const activeActivities = (localOrder ?? activities)
     .filter((a) => !a.archived)
     .sort((a, b) => a.order - b.order);
 
   const handleEdit = (activity: Activity) => {
     setEditingActivity(activity);
     setModalOpen(true);
-    setMenuOpen(null);
+    setContextMenu(null);
   };
 
   const handleDelete = (id: string) => {
     deleteActivity(id);
-    setMenuOpen(null);
+    setContextMenu(null);
   };
 
   const handleArchive = (id: string) => {
     archiveActivity(id);
-    setMenuOpen(null);
+    setContextMenu(null);
   };
 
-  const handleDragStart = (index: number) => {
+  const handleContextMenu = useCallback((e: React.MouseEvent, activityId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ activityId, x: e.clientX, y: e.clientY });
+  }, []);
+
+  const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
-  };
+    draggedIndexRef.current = index;
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = "move";
+    }
+  }, []);
 
   const handleDragOver = useCallback(
     (e: React.DragEvent, index: number) => {
       e.preventDefault();
-      if (draggedIndex === null || draggedIndex === index) return;
-      const newOrder = [...activeActivities];
-      const [moved] = newOrder.splice(draggedIndex, 1);
-      newOrder.splice(index, 0, moved);
-      reorderActivities(newOrder);
-      setDraggedIndex(index);
+      e.dataTransfer.dropEffect = "move";
+      const fromIndex = draggedIndexRef.current;
+      if (fromIndex === null || fromIndex === index) return;
+
+      setLocalOrder((prev) => {
+        const source = prev ?? activities;
+        const active = source
+          .filter((a) => !a.archived)
+          .sort((a, b) => a.order - b.order);
+        const newOrder = [...active];
+        const [moved] = newOrder.splice(fromIndex, 1);
+        newOrder.splice(index, 0, moved);
+        const reindexed = newOrder.map((a, i) => ({ ...a, order: i }));
+        const archived = source.filter((a) => a.archived);
+        draggedIndexRef.current = index;
+        setDraggedIndex(index);
+        return [...reindexed, ...archived];
+      });
     },
-    [draggedIndex, activeActivities, reorderActivities]
+    [activities]
   );
 
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     setDraggedIndex(null);
-  };
+    draggedIndexRef.current = null;
+
+    if (localOrder) {
+      const finalActive = localOrder
+        .filter((a) => !a.archived)
+        .sort((a, b) => a.order - b.order);
+      reorderActivities(finalActive);
+    }
+    setLocalOrder(null);
+  }, [localOrder, reorderActivities]);
 
   if (isLoading && activities.length === 0) {
     return (
@@ -161,17 +202,13 @@ export default function SchedulePage() {
               activeActivities.map((activity, index) => {
                 const IconComponent = iconMap[activity.icon] || Clock;
                 return (
-                  <motion.div
+                  <div
                     key={activity.id}
-                    layout
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20, height: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
                     draggable
-                    onDragStart={() => handleDragStart(index)}
+                    onDragStart={(e) => handleDragStart(e, index)}
                     onDragOver={(e) => handleDragOver(e, index)}
                     onDragEnd={handleDragEnd}
+                    onContextMenu={(e) => handleContextMenu(e, activity.id)}
                     className={`group relative flex items-start gap-4 ${
                       draggedIndex === index ? "opacity-50" : ""
                     }`}
@@ -188,7 +225,7 @@ export default function SchedulePage() {
                     </div>
 
                     {/* Card */}
-                    <div className="glass-card glass-card-hover flex-1 rounded-xl p-4 cursor-grab active:cursor-grabbing">
+                    <div className="glass-card glass-card-hover flex-1 rounded-xl p-4 cursor-grab active:cursor-grabbing select-none">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3">
                           <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
@@ -225,51 +262,19 @@ export default function SchedulePage() {
                             </div>
                           </div>
                         </div>
-
-                        {/* Menu */}
-                        <div className="relative">
-                          <button
-                            onClick={() =>
-                              setMenuOpen(menuOpen === activity.id ? null : activity.id)
-                            }
-                            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
-
-                          <AnimatePresence>
-                            {menuOpen === activity.id && (
-                              <motion.div
-                                initial={{ opacity: 0, scale: 0.95, y: -5 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95, y: -5 }}
-                                className="absolute right-0 top-8 z-20 w-40 rounded-xl border border-border bg-card p-1 shadow-xl"
-                              >
-                                <button
-                                  onClick={() => handleEdit(activity)}
-                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent"
-                                >
-                                  <Pencil className="h-3.5 w-3.5" /> Edit
-                                </button>
-                                <button
-                                  onClick={() => handleArchive(activity.id)}
-                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent"
-                                >
-                                  <Archive className="h-3.5 w-3.5" /> Archive
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(activity.id)}
-                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" /> Delete
-                                </button>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setContextMenu({ activityId: activity.id, x: rect.right - 176, y: rect.bottom + 4 });
+                          }}
+                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })
             )}
@@ -277,10 +282,52 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      {/* Click outside to close menus */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />
-      )}
+      {/* Right-click context menu */}
+      <AnimatePresence>
+        {contextMenu && (() => {
+          const activity = activeActivities.find((a) => a.id === contextMenu.activityId);
+          if (!activity) return null;
+          return (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setContextMenu(null)}
+                onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.92 }}
+                transition={{ duration: 0.12 }}
+                className="fixed z-50 w-44 rounded-xl border border-border bg-card p-1 shadow-2xl"
+                style={{
+                  left: contextMenu.x,
+                  top: contextMenu.y,
+                }}
+              >
+                <button
+                  onClick={() => handleEdit(activity)}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent"
+                >
+                  <Pencil className="h-3.5 w-3.5" /> Edit
+                </button>
+                <button
+                  onClick={() => handleArchive(activity.id)}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent"
+                >
+                  <Archive className="h-3.5 w-3.5" /> Archive
+                </button>
+                <button
+                  onClick={() => handleDelete(activity.id)}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Delete
+                </button>
+              </motion.div>
+            </>
+          );
+        })()}
+      </AnimatePresence>
 
       {/* Activity Modal */}
       <ActivityModal
@@ -294,3 +341,5 @@ export default function SchedulePage() {
     </motion.div>
   );
 }
+
+

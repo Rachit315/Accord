@@ -155,6 +155,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const todayStr = getLocalDateString();
       const data = await fetchUserData(todayStr);
+      // If auth wasn't ready on the server, skip updating state to avoid wiping data
+      if (!data) {
+        return;
+      }
       setActivities(data.activities);
       setTodayEntries(data.todayEntries);
       setAllEntries(data.allEntries);

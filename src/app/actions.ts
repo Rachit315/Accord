@@ -4,9 +4,15 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { Activity, DailyEntry, AppSettings } from "@/lib/types";
 
-// Helper to assert authentication and return clerkUserId
-async function getAuthUserId(): Promise<string> {
+// Helper to get the authenticated user's ID, or null if not signed in
+async function getAuthUserId(): Promise<string | null> {
   const { userId } = await auth();
+  return userId;
+}
+
+// Helper that throws if not authenticated (for mutation actions)
+async function requireAuthUserId(): Promise<string> {
+  const userId = await getAuthUserId();
   if (!userId) {
     throw new Error("Unauthorized: User is not authenticated.");
   }
@@ -20,6 +26,11 @@ async function getAuthUserId(): Promise<string> {
  */
 export async function fetchUserData(todayDateStr: string) {
   const clerkUserId = await getAuthUserId();
+
+  // If not authenticated, return null so the caller can skip state updates
+  if (!clerkUserId) {
+    return null;
+  }
 
   // 1. Load or initialize UserSettings
   let settings = await db.userSettings.findUnique({
@@ -142,7 +153,7 @@ export async function createActivityAction(
   activityData: Omit<Activity, "id" | "order" | "createdAt" | "archived">,
   todayDateStr?: string
 ) {
-  const clerkUserId = await getAuthUserId();
+  const clerkUserId = await requireAuthUserId();
 
   // Find current count for ordering
   const activeCount = await db.activity.count({
@@ -189,7 +200,7 @@ export async function createActivityAction(
  * Updates an activity in the database.
  */
 export async function updateActivityAction(id: string, updates: Partial<Activity>) {
-  const clerkUserId = await getAuthUserId();
+  const clerkUserId = await requireAuthUserId();
 
   // Verify ownership
   const activity = await db.activity.findFirst({
@@ -240,7 +251,7 @@ export async function updateActivityAction(id: string, updates: Partial<Activity
  * Deletes an activity and all its related daily entries (cascade delete).
  */
 export async function deleteActivityAction(id: string) {
-  const clerkUserId = await getAuthUserId();
+  const clerkUserId = await requireAuthUserId();
 
   // Verify ownership
   const activity = await db.activity.findFirst({
@@ -261,7 +272,7 @@ export async function deleteActivityAction(id: string) {
  * Reorders activities in the database.
  */
 export async function reorderActivitiesAction(reorderedActivities: Activity[]) {
-  const clerkUserId = await getAuthUserId();
+  const clerkUserId = await requireAuthUserId();
 
   const updates = reorderedActivities.map((a, i) =>
     db.activity.updateMany({
@@ -278,7 +289,7 @@ export async function reorderActivitiesAction(reorderedActivities: Activity[]) {
  * Saves/updates a daily entry check-in status.
  */
 export async function saveDailyEntryAction(id: string, updates: Partial<DailyEntry>) {
-  const clerkUserId = await getAuthUserId();
+  const clerkUserId = await requireAuthUserId();
 
   // Verify ownership
   const entry = await db.dailyEntry.findFirst({
@@ -314,7 +325,7 @@ export async function saveDailyEntryAction(id: string, updates: Partial<DailyEnt
  * Updates application preferences / UserSettings.
  */
 export async function updateSettingsAction(updates: Partial<AppSettings>) {
-  const clerkUserId = await getAuthUserId();
+  const clerkUserId = await requireAuthUserId();
 
   const dataToUpdate: any = {};
   if (updates.theme) dataToUpdate.theme = updates.theme;
@@ -341,7 +352,7 @@ export async function updateSettingsAction(updates: Partial<AppSettings>) {
  * Updates the user's plan in Clerk public metadata.
  */
 export async function updateUserPlanAction(plan: "free" | "pro") {
-  const clerkUserId = await getAuthUserId();
+  const clerkUserId = await requireAuthUserId();
   const client = await clerkClient();
   await client.users.updateUserMetadata(clerkUserId, {
     publicMetadata: {

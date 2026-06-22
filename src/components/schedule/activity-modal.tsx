@@ -31,13 +31,13 @@ interface ActivityModalProps {
 }
 
 export function ActivityModal({ open, onClose, activity }: ActivityModalProps) {
-  const { addActivity, updateActivity, activities } = useApp();
+  const { addActivity, updateActivity, activities, settings } = useApp();
   const isEditing = !!activity;
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [idealTime, setIdealTime] = useState("08:00");
-  const [flexibility, setFlexibility] = useState(15);
+  const [flexibility, setFlexibility] = useState(settings.defaultFlexibility);
   const [icon, setIcon] = useState("Sunrise");
   const [color, setColor] = useState("#67C587");
   const [reminder, setReminder] = useState(true);
@@ -56,12 +56,12 @@ export function ActivityModal({ open, onClose, activity }: ActivityModalProps) {
       setTitle("");
       setDescription("");
       setIdealTime("08:00");
-      setFlexibility(15);
+      setFlexibility(settings.defaultFlexibility);
       setIcon("Sunrise");
       setColor("#67C587");
       setReminder(true);
     }
-  }, [activity, open]);
+  }, [activity, open, settings.defaultFlexibility]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

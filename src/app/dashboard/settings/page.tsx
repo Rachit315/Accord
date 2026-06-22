@@ -3,18 +3,15 @@
 import { motion } from "framer-motion";
 import {
   User,
-  Bell,
-  Palette,
   CalendarClock,
   Crown,
-  Download,
   Mail,
-  Clock,
+  LogOut,
 } from "lucide-react";
 import { useApp } from "@/contexts/app-context";
 
 export default function SettingsPage() {
-  const { user, settings, updateSettings, updateProfile, setShowUpgradeModal } = useApp();
+  const { user, settings, updateSettings, updateProfile, setShowUpgradeModal, signOut } = useApp();
 
   return (
     <motion.div
@@ -78,7 +75,7 @@ export default function SettingsPage() {
           </div>
         </motion.div>
 
-        {/* Notifications */}
+        {/* Schedule Config */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -86,106 +83,14 @@ export default function SettingsPage() {
           className="glass-card rounded-xl p-6"
         >
           <div className="mb-4 flex items-center gap-2">
-            <Bell className="h-5 w-5 text-secondary" />
-            <h2 className="text-lg font-semibold">Notifications</h2>
-          </div>
-          <div className="space-y-4">
-            {[
-              { key: "dailyReminder" as const, label: "Daily Reminders", desc: "Get reminded before each activity" },
-              { key: "weeklyReport" as const, label: "Weekly Report", desc: "Receive a weekly alignment summary" },
-              { key: "streakAlerts" as const, label: "Streak Alerts", desc: "Get notified about streak milestones" },
-              { key: "insightNotifications" as const, label: "Insight Notifications", desc: "New insights and suggestions" },
-            ].map((item) => (
-              <div key={item.key} className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium">{item.label}</div>
-                  <div className="text-xs text-muted-foreground">{item.desc}</div>
-                </div>
-                <button
-                  onClick={() =>
-                    updateSettings({
-                      notifications: {
-                        ...settings.notifications,
-                        [item.key]: !settings.notifications[item.key],
-                      },
-                    })
-                  }
-                  className={`relative h-6 w-11 rounded-full transition-colors ${
-                    settings.notifications[item.key] ? "bg-primary" : "bg-border"
-                  }`}
-                >
-                  <div
-                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
-                      settings.notifications[item.key] ? "translate-x-5" : "translate-x-0.5"
-                    }`}
-                  />
-                </button>
-              </div>
-            ))}
-            <div className="flex items-center justify-between pt-2 border-t border-border">
-              <div>
-                <div className="text-sm font-medium">Reminder Time</div>
-                <div className="text-xs text-muted-foreground">Default time for daily reminders</div>
-              </div>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="time"
-                  value={settings.notifications.reminderTime}
-                  onChange={(e) =>
-                    updateSettings({
-                      notifications: { ...settings.notifications, reminderTime: e.target.value },
-                    })
-                  }
-                  className="h-9 rounded-lg border border-border bg-background/50 pl-10 pr-3 text-sm outline-none focus:border-primary/50"
-                />
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Theme */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="glass-card rounded-xl p-6"
-        >
-          <div className="mb-4 flex items-center gap-2">
-            <Palette className="h-5 w-5 text-chart-4" />
-            <h2 className="text-lg font-semibold">Theme</h2>
-          </div>
-          <div className="flex gap-3">
-            {(["dark", "light"] as const).map((theme) => (
-              <button
-                key={theme}
-                onClick={() => updateSettings({ theme })}
-                className={`flex-1 rounded-xl border p-4 text-center transition-all ${
-                  settings.theme === theme
-                    ? "border-primary bg-primary/5"
-                    : "border-border bg-card/50 hover:border-primary/30"
-                }`}
-              >
-                <div className={`mx-auto mb-2 h-10 w-10 rounded-lg ${theme === "dark" ? "bg-[#0A0A0F]" : "bg-white border border-gray-200"}`} />
-                <div className="text-sm font-medium capitalize">{theme}</div>
-              </button>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Schedule Config */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="glass-card rounded-xl p-6"
-        >
-          <div className="mb-4 flex items-center gap-2">
             <CalendarClock className="h-5 w-5 text-chart-3" />
-            <h2 className="text-lg font-semibold">Schedule Config</h2>
+            <h2 className="text-lg font-semibold">Default Schedule Config</h2>
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium">Default Flexibility Window</label>
+            <p className="mb-3 text-xs text-muted-foreground">
+              This will be the default flexibility window when you create a new activity.
+            </p>
             <select
               value={settings.defaultFlexibility}
               onChange={(e) => updateSettings({ defaultFlexibility: Number(e.target.value) })}
@@ -202,7 +107,7 @@ export default function SettingsPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.2 }}
           className="glass-card rounded-xl p-6"
         >
           <div className="mb-4 flex items-center gap-2">
@@ -229,30 +134,30 @@ export default function SettingsPage() {
           </div>
         </motion.div>
 
-        {/* Data Export */}
+        {/* Logout */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
+          transition={{ delay: 0.25 }}
           className="glass-card rounded-xl p-6"
         >
           <div className="mb-4 flex items-center gap-2">
-            <Download className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">Data Export</h2>
+            <LogOut className="h-5 w-5 text-destructive" />
+            <h2 className="text-lg font-semibold">Logout</h2>
           </div>
           <p className="mb-4 text-sm text-muted-foreground">
-            Download your routine data for external analysis.
+            Sign out of your account on this device.
           </p>
-          <div className="flex gap-3">
-            <button className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-sm font-medium transition-colors hover:bg-card">
-              <Download className="h-4 w-4" /> Export JSON
-            </button>
-            <button className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-sm font-medium transition-colors hover:bg-card">
-              <Download className="h-4 w-4" /> Export CSV
-            </button>
-          </div>
+          <button
+            onClick={() => signOut()}
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-5 text-sm font-medium text-destructive transition-all hover:bg-destructive/20 hover:border-destructive/50"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </button>
         </motion.div>
       </div>
     </motion.div>
   );
 }
+
