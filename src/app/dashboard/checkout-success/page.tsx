@@ -1,0 +1,112 @@
+"use client";
+
+import { motion } from "framer-motion";
+import { CheckCircle, ArrowRight, Sparkles } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Suspense } from "react";
+
+function CheckoutSuccessContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const isSuccess = searchParams.get("success") === "true";
+  const [countdown, setCountdown] = useState(5);
+
+  useEffect(() => {
+    if (!isSuccess) {
+      router.replace("/dashboard/settings");
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          router.push("/dashboard/settings");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isSuccess, router]);
+
+  if (!isSuccess) return null;
+
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: "spring", bounce: 0.3, duration: 0.6 }}
+        className="glass-card relative w-full max-w-md rounded-2xl p-8 text-center"
+      >
+        {/* Animated sparkles */}
+        <motion.div
+          initial={{ opacity: 0, rotate: -20 }}
+          animate={{ opacity: 1, rotate: 0 }}
+          transition={{ delay: 0.2, duration: 0.4 }}
+          className="absolute -top-3 -right-3"
+        >
+          <Sparkles className="h-8 w-8 text-secondary" />
+        </motion.div>
+
+        {/* Success icon */}
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.1, type: "spring", bounce: 0.5 }}
+          className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-green-500/20 to-emerald-500/20"
+        >
+          <CheckCircle className="h-10 w-10 text-green-500" />
+        </motion.div>
+
+        {/* Text content */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <h1 className="mb-2 text-2xl font-bold">Payment Successful! 🎉</h1>
+          <p className="mb-2 text-muted-foreground">
+            Welcome to <span className="font-semibold text-primary">Accord Pro</span>!
+          </p>
+          <p className="mb-6 text-sm text-muted-foreground">
+            You now have unlimited activities, 90-day history, AI insights, and more.
+          </p>
+        </motion.div>
+
+        {/* CTA Button */}
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          onClick={() => router.push("/dashboard/settings")}
+          className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary/80 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/30"
+        >
+          Go to Dashboard
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+        </motion.button>
+
+        <p className="mt-3 text-xs text-muted-foreground">
+          Redirecting in {countdown} second{countdown !== 1 ? "s" : ""}...
+        </p>
+      </motion.div>
+    </div>
+  );
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      }
+    >
+      <CheckoutSuccessContent />
+    </Suspense>
+  );
+}

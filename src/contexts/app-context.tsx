@@ -269,7 +269,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Silent refresh to verify backend consistency
       const todayStr = getLocalDateString();
       const data = await fetchUserData(todayStr);
-      setActivities(data.activities);
+      if (data) {
+        setActivities(data.activities);
+      }
     } catch (error) {
       console.error("Error reordering activities in DB:", error);
       refreshData();

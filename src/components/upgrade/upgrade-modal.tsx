@@ -1,11 +1,26 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check, Crown, Zap } from "lucide-react";
+import { X, Check, Crown, Zap, Loader2 } from "lucide-react";
 import { useApp } from "@/contexts/app-context";
+import { useState } from "react";
 
 export function UpgradeModal() {
-  const { showUpgradeModal, setShowUpgradeModal, upgradeToPro } = useApp();
+  const { showUpgradeModal, setShowUpgradeModal } = useApp();
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  const handleUpgrade = () => {
+    const productId = process.env.NEXT_PUBLIC_POLAR_PRODUCT_ID;
+
+    if (!productId) {
+      console.error("NEXT_PUBLIC_POLAR_PRODUCT_ID is not set");
+      return;
+    }
+
+    setIsRedirecting(true);
+    // Redirect to our checkout API route, which creates a Polar checkout session
+    window.location.href = `/api/checkout?products=${productId}`;
+  };
 
   return (
     <AnimatePresence>
@@ -16,7 +31,7 @@ export function UpgradeModal() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
-            onClick={() => setShowUpgradeModal(false)}
+            onClick={() => !isRedirecting && setShowUpgradeModal(false)}
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -28,7 +43,8 @@ export function UpgradeModal() {
             <div className="glass-card relative w-full max-w-lg rounded-2xl p-8">
               <button
                 onClick={() => setShowUpgradeModal(false)}
-                className="absolute right-4 top-4 rounded-lg p-1.5 text-muted-foreground hover:bg-card hover:text-foreground"
+                disabled={isRedirecting}
+                className="absolute right-4 top-4 rounded-lg p-1.5 text-muted-foreground hover:bg-card hover:text-foreground disabled:opacity-50"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -68,15 +84,25 @@ export function UpgradeModal() {
               </div>
 
               <button
-                onClick={upgradeToPro}
-                className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary/80 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/30"
+                onClick={handleUpgrade}
+                disabled={isRedirecting}
+                className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary/80 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/30 disabled:opacity-70"
               >
-                <Zap className="h-4 w-4" />
-                Upgrade Now
+                {isRedirecting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Redirecting to checkout...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4" />
+                    Upgrade Now
+                  </>
+                )}
               </button>
 
               <p className="mt-3 text-center text-xs text-muted-foreground">
-                7-day free trial • Cancel anytime
+                Secure checkout powered by Polar • Cancel anytime
               </p>
             </div>
           </motion.div>
