@@ -10,16 +10,23 @@ export function UpgradeModal() {
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   const handleUpgrade = () => {
+    const checkoutLink = process.env.NEXT_PUBLIC_POLAR_CHECKOUT_LINK;
     const productId = process.env.NEXT_PUBLIC_POLAR_PRODUCT_ID;
 
-    if (!productId) {
-      console.error("NEXT_PUBLIC_POLAR_PRODUCT_ID is not set");
+    if (!checkoutLink && !productId) {
+      console.error("Neither NEXT_PUBLIC_POLAR_CHECKOUT_LINK nor NEXT_PUBLIC_POLAR_PRODUCT_ID is set");
       return;
     }
 
     setIsRedirecting(true);
-    // Redirect to our checkout API route, which creates a Polar checkout session
-    window.location.href = `/api/checkout?products=${productId}`;
+
+    if (checkoutLink) {
+      // Redirect directly to the Polar checkout link
+      window.location.href = checkoutLink;
+    } else {
+      // Redirect to our checkout API route, which creates a Polar checkout session
+      window.location.href = `/api/checkout?products=${productId}`;
+    }
   };
 
   return (

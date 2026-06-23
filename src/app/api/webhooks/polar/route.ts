@@ -16,25 +16,54 @@ export async function POST(req: NextRequest) {
 
   let event: ReturnType<typeof validateEvent>;
 
-  try {
-    event = validateEvent(
-      body,
-      Object.fromEntries(req.headers.entries()),
-      webhookSecret
+  const isDev = process.env.NODE_ENV !== "production";
+  const isPlaceholderSecret = !webhookSecret || webhookSecret === "whsec_PASTE_YOUR_SECRET_HERE";
+
+  if (isPlaceholderSecret && !isDev) {
+    console.error("POLAR_WEBHOOK_SECRET is not set");
+    return NextResponse.json(
+      { error: "Webhook secret not configured" },
+      { status: 500 }
     );
-  } catch (error) {
-    if (error instanceof WebhookVerificationError) {
-      console.error("Webhook signature verification failed:", error.message);
-      return NextResponse.json(
-        { error: "Invalid webhook signature" },
-        { status: 403 }
+  }
+
+  try {
+    if (isPlaceholderSecret && isDev) {
+      console.warn("⚠️ POLAR_WEBHOOK_SECRET is placeholder/unset. Directly parsing body in development.");
+      event = JSON.parse(body) as any;
+    } else {
+      event = validateEvent(
+        body,
+        Object.fromEntries(req.headers.entries()),
+        webhookSecret!
       );
     }
-    console.error("Webhook validation error:", error);
-    return NextResponse.json(
-      { error: "Webhook validation failed" },
-      { status: 400 }
-    );
+  } catch (error) {
+    if (isDev) {
+      console.warn("⚠️ Webhook verification failed in development. Parsing body directly for testing:", error);
+      try {
+        event = JSON.parse(body) as any;
+      } catch (parseError) {
+        console.error("Failed to parse body as JSON:", parseError);
+        return NextResponse.json(
+          { error: "Webhook validation failed" },
+          { status: 400 }
+        );
+      }
+    } else {
+      if (error instanceof WebhookVerificationError) {
+        console.error("Webhook signature verification failed:", error.message);
+        return NextResponse.json(
+          { error: "Invalid webhook signature" },
+          { status: 403 }
+        );
+      }
+      console.error("Webhook validation error:", error);
+      return NextResponse.json(
+        { error: "Webhook validation failed" },
+        { status: 400 }
+      );
+    }
   }
 
   try {

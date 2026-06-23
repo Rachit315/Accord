@@ -361,3 +361,33 @@ export async function updateUserPlanAction(plan: "free" | "pro") {
   });
   return { success: true };
 }
+
+/**
+ * Verifies a Polar checkout session status and upgrades the user's plan in Clerk.
+ */
+export async function verifyCheckoutAction(checkoutId: string) {
+  const clerkUserId = await requireAuthUserId();
+  const { polar } = await import("@/lib/polar");
+
+  try {
+    const checkout = await polar.checkouts.get({ id: checkoutId });
+
+    if (checkout.status === "confirmed" || checkout.status === "succeeded") {
+      const client = await clerkClient();
+      await client.users.updateUserMetadata(clerkUserId, {
+        publicMetadata: {
+          plan: "pro",
+          polarCustomerId: checkout.customerId,
+          polarCheckoutId: checkout.id,
+          upgradedAt: new Date().toISOString(),
+        },
+      });
+      return { success: true };
+    }
+    return { success: false, status: checkout.status };
+  } catch (error) {
+    console.error("Error verifying checkout session:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
