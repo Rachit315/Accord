@@ -413,21 +413,21 @@ function generateInsights(
   const completed = allEntries.filter(
     (e) => e.status !== "skipped" && e.status !== "pending"
   );
-  if (completed.length < 3) {
-    return []; // Not enough data
+  if (completed.length < 2) {
+    return []; // Not enough data — need at least 2 completed entries
   }
 
-  // 1. Check for best aligned activity (Strength)
+  // 1. Check for best aligned activity (Strength) — lowered threshold to 75%
   let bestAct: Activity | null = null;
   let bestScore = 0;
 
   activities.forEach((act) => {
     const actEntries = completed.filter((e) => e.activityId === act.id);
-    if (actEntries.length >= 2) {
+    if (actEntries.length >= 1) {
       const avg =
         actEntries.reduce((sum, e) => sum + e.alignmentScore, 0) /
         actEntries.length;
-      if (avg > bestScore && avg >= 85) {
+      if (avg > bestScore && avg >= 75) {
         bestScore = avg;
         bestAct = act;
       }
@@ -447,20 +447,20 @@ function generateInsights(
     });
   }
 
-  // 2. Check for worst aligned activity (Improvement suggestion)
+  // 2. Check for worst aligned activity (Improvement suggestion) — widened range to <80%
   let worstAct: Activity | null = null;
   let worstScore = 100;
   let worstAvgDev = 0;
 
   activities.forEach((act) => {
     const actEntries = completed.filter((e) => e.activityId === act.id);
-    if (actEntries.length >= 2) {
+    if (actEntries.length >= 1) {
       const avg =
         actEntries.reduce((sum, e) => sum + e.alignmentScore, 0) /
         actEntries.length;
       const dev =
         actEntries.reduce((sum, e) => sum + e.deviation, 0) / actEntries.length;
-      if (avg < worstScore && avg < 75) {
+      if (avg < worstScore && avg < 80) {
         worstScore = avg;
         worstAct = act;
         worstAvgDev = dev;
@@ -486,9 +486,9 @@ function generateInsights(
     });
   }
 
-  // 3. Overall Trend insight
-  const recentEntries = completed.slice(-10);
-  const oldEntries = completed.slice(0, -10);
+  // 3. Overall Trend insight — lowered from 13 entries to 6, and diff threshold from 5% to 3%
+  const recentEntries = completed.slice(-5);
+  const oldEntries = completed.slice(0, -5);
   if (recentEntries.length >= 3 && oldEntries.length >= 3) {
     const recentAvg =
       recentEntries.reduce((sum, e) => sum + e.alignmentScore, 0) /
@@ -498,21 +498,101 @@ function generateInsights(
       oldEntries.length;
 
     const diff = recentAvg - oldAvg;
-    if (diff > 5) {
+    if (diff > 3) {
       insights.push({
         id: "in-3",
         type: "trend",
         icon: "TrendingUp",
         title: "Consistency Upward Trend",
-        description: `Your average alignment increased by +${Math.round(diff)}% over your last 10 activities compared to your earlier routines.`,
+        description: `Your average alignment increased by +${Math.round(diff)}% over your last 5 activities compared to your earlier routines.`,
         metric: `+${Math.round(diff)}%`,
         metricLabel: "vs baseline",
         color: "#3B82F6",
       });
+    } else if (diff < -3) {
+      insights.push({
+        id: "in-3b",
+        type: "improvement",
+        icon: "TrendingUp",
+        title: "Alignment Dipping",
+        description: `Your recent alignment dropped by ${Math.round(Math.abs(diff))}% compared to your earlier entries. Try to stick closer to your scheduled times.`,
+        metric: `${Math.round(diff)}%`,
+        metricLabel: "vs baseline",
+        color: "#E89A73",
+      });
     }
   }
 
-  // Default fallbacks if list is too small
+  // 4. Consistency / Skip Rate insight
+  const totalEntries = allEntries.filter((e) => e.status !== "pending");
+  const skippedEntries = totalEntries.filter((e) => e.status === "skipped");
+  if (totalEntries.length >= 3) {
+    const skipRate = Math.round((skippedEntries.length / totalEntries.length) * 100);
+    const completionRate = 100 - skipRate;
+
+    if (skipRate > 30) {
+      insights.push({
+        id: "in-4",
+        type: "improvement",
+        icon: "XCircle",
+        title: "High Skip Rate",
+        description: `You've skipped ${skipRate}% of your scheduled activities. Consider reducing the number of activities or adjusting times to be more realistic.`,
+        metric: `${skipRate}%`,
+        metricLabel: "skipped",
+        color: "#E89A73",
+      });
+    } else if (completionRate >= 80 && totalEntries.length >= 5) {
+      insights.push({
+        id: "in-4b",
+        type: "achievement",
+        icon: "Calendar",
+        title: "Great Consistency",
+        description: `You've completed ${completionRate}% of your scheduled activities. Your commitment to your routine is impressive — keep it up!`,
+        metric: `${completionRate}%`,
+        metricLabel: "completion",
+        color: "#67C587",
+      });
+    }
+  }
+
+  // 5. Time-of-day pattern insight
+  if (completed.length >= 3) {
+    const morningEntries = completed.filter((e) => {
+      const hour = parseInt(e.idealTime.split(":")[0], 10);
+      return hour < 12;
+    });
+    const eveningEntries = completed.filter((e) => {
+      const hour = parseInt(e.idealTime.split(":")[0], 10);
+      return hour >= 12;
+    });
+
+    if (morningEntries.length >= 2 && eveningEntries.length >= 2) {
+      const morningAvg =
+        morningEntries.reduce((sum, e) => sum + e.alignmentScore, 0) /
+        morningEntries.length;
+      const eveningAvg =
+        eveningEntries.reduce((sum, e) => sum + e.alignmentScore, 0) /
+        eveningEntries.length;
+
+      const diff = morningAvg - eveningAvg;
+      if (Math.abs(diff) > 10) {
+        const betterTime = diff > 0 ? "morning" : "evening";
+        const betterAvg = Math.round(diff > 0 ? morningAvg : eveningAvg);
+        insights.push({
+          id: "in-5",
+          type: "trend",
+          icon: diff > 0 ? "Sun" : "Moon",
+          title: `Stronger ${betterTime.charAt(0).toUpperCase() + betterTime.slice(1)} Routine`,
+          description: `Your ${betterTime} activities average ${betterAvg}% alignment — ${Math.round(Math.abs(diff))}% higher than your ${diff > 0 ? "evening" : "morning"} routine. Consider scheduling important tasks during your stronger period.`,
+          metric: `${betterAvg}%`,
+          metricLabel: `${betterTime} avg`,
+          color: diff > 0 ? "#F59E0B" : "#8B5CF6",
+        });
+      }
+    }
+  }
+
+  // Default fallback if nothing triggered
   if (insights.length === 0) {
     insights.push({
       id: "in-default",

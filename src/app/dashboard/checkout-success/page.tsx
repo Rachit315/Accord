@@ -16,8 +16,10 @@ function CheckoutSuccessContent() {
   const [countdown, setCountdown] = useState(5);
   const [isVerifying, setIsVerifying] = useState(!!checkoutId);
   const [verificationError, setVerificationError] = useState<string | null>(null);
-  const { updateProfile } = useApp();
+  const [verificationDone, setVerificationDone] = useState(!checkoutId);
+  const { refreshUser } = useApp();
 
+  // Step 1: Verify the checkout with Polar
   useEffect(() => {
     if (!isSuccess) {
       router.replace("/dashboard/settings");
@@ -29,16 +31,23 @@ function CheckoutSuccessContent() {
         setIsVerifying(true);
         const result = await verifyCheckoutAction(checkoutId);
         if (result.success) {
-          updateProfile({ plan: "pro" });
+          // Force-reload Clerk user to pick up plan:"pro" from server metadata
+          await refreshUser();
         } else {
           console.error("Verification failed:", result.error || result.status);
           setVerificationError(result.error || `Checkout status is ${result.status}`);
         }
         setIsVerifying(false);
+        setVerificationDone(true);
       }
     }
 
     verify();
+  }, [isSuccess, checkoutId, router, refreshUser]);
+
+  // Step 2: Only start countdown AFTER verification completes
+  useEffect(() => {
+    if (!verificationDone || !isSuccess) return;
 
     const timer = setInterval(() => {
       setCountdown((prev) => {
@@ -52,7 +61,7 @@ function CheckoutSuccessContent() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isSuccess, checkoutId, router, updateProfile]);
+  }, [verificationDone, isSuccess, router]);
 
   if (!isSuccess) return null;
 

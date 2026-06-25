@@ -59,6 +59,7 @@ interface AppContextType {
   showUpgradeModal: boolean;
   setShowUpgradeModal: (show: boolean) => void;
   upgradeToPro: () => void;
+  refreshUser: () => Promise<void>;
 
   // Stats
   stats: ReturnType<typeof computeStatsAndHistory>;
@@ -364,15 +365,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setProfileUpdates((prev) => ({ ...prev, ...updates }));
   }, []);
 
+  // Force-refresh the Clerk user session and all app data.
+  // This is critical after payment: Clerk caches user metadata client-side,
+  // so without reload() the user still sees plan:"free" after page refresh.
+  const refreshUser = useCallback(async () => {
+    if (clerkUser) {
+      await clerkUser.reload();
+    }
+    // Clear local profile overrides so we read fresh data from Clerk
+    setProfileUpdates({});
+    await refreshData();
+  }, [clerkUser, refreshData]);
+
   const upgradeToPro = useCallback(async () => {
     setProfileUpdates((prev) => ({ ...prev, plan: "pro" }));
     setShowUpgradeModal(false);
     try {
       await updateUserPlanAction("pro");
+      // Reload Clerk user to pick up the new plan metadata
+      await refreshUser();
     } catch (error) {
       console.error("Error upgrading plan in Clerk:", error);
     }
-  }, []);
+  }, [refreshUser]);
 
   return (
     <AppContext.Provider
@@ -402,6 +417,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         showUpgradeModal,
         setShowUpgradeModal,
         upgradeToPro,
+        refreshUser,
         stats: computedStats,
       }}
     >

@@ -382,15 +382,39 @@ export default function ProgressPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.6 }}
-        className="glass-card mt-6 rounded-xl p-6"
+        className="glass-card mt-6 rounded-xl p-6 relative overflow-hidden"
       >
         <div className="mb-4 flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold">90-Day Consistency</h2>
+          {user.plan === "free" && (
+            <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              <Lock className="h-3 w-3" /> Pro
+            </span>
+          )}
         </div>
-        <div className="overflow-x-auto">
-          <Heatmap data={heatmapData} />
-        </div>
+        {user.plan === "free" ? (
+          <div className="relative">
+            <div className="blur-sm pointer-events-none select-none opacity-50">
+              <Heatmap data={heatmapData} />
+            </div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <p className="mb-3 text-sm text-muted-foreground text-center">
+                Unlock the 90-day consistency heatmap with Pro
+              </p>
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground transition-all hover:bg-primary/90"
+              >
+                <Lock className="h-3 w-3" /> Upgrade to Pro
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Heatmap data={heatmapData} />
+          </div>
+        )}
       </motion.div>
 
       {/* Streaks & Achievements */}
