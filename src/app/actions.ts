@@ -160,6 +160,15 @@ export async function createActivityAction(
     where: { clerkUserId, archived: false },
   });
 
+  // Server-side limit enforcement
+  const client = await clerkClient();
+  const userObj = await client.users.getUser(clerkUserId);
+  const plan = (userObj.publicMetadata?.plan as string) || "free";
+  
+  if (plan === "free" && activeCount >= 5) {
+    throw new Error("Free plan limit reached. Please upgrade to Pro.");
+  }
+
   const newActivity = await db.activity.create({
     data: {
       clerkUserId,

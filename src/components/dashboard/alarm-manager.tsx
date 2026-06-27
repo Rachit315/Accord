@@ -75,6 +75,9 @@ export function AlarmManager() {
   // Show notification permission prompt on mount if supported and not yet requested
   useEffect(() => {
     if (notifSupported && notifPermission === "default") {
+      const hasDismissed = localStorage.getItem("accord_alarm_prompt_dismissed");
+      if (hasDismissed === "true") return;
+
       // Small timeout to not disrupt immediately on loading
       const timer = setTimeout(() => {
         setShowPermissionPrompt(true);
@@ -167,6 +170,12 @@ export function AlarmManager() {
 
   const handleAcceptNotifications = async () => {
     await requestPermission();
+    localStorage.setItem("accord_alarm_prompt_dismissed", "true");
+    setShowPermissionPrompt(false);
+  };
+
+  const handleSkipPrompt = () => {
+    localStorage.setItem("accord_alarm_prompt_dismissed", "true");
     setShowPermissionPrompt(false);
   };
 
@@ -269,7 +278,7 @@ export function AlarmManager() {
           <DialogFooter className="mt-4 flex gap-2">
             <Button
               variant="outline"
-              onClick={() => setShowPermissionPrompt(false)}
+              onClick={handleSkipPrompt}
               className="flex-1 sm:flex-none"
             >
               Skip

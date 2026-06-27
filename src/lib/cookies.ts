@@ -42,11 +42,12 @@ export function setCookie(
 ): void {
   if (typeof document === "undefined") return;
 
+  const isHttps = window.location.protocol === "https:";
   const {
     maxAge = DEFAULT_MAX_AGE,
     path = "/",
     sameSite = "lax",
-    secure = false,
+    secure = isHttps,
   } = options;
 
   let cookieStr = `${name}=${encodeURIComponent(value)}; path=${path}; max-age=${maxAge}; SameSite=${sameSite}`;
@@ -62,5 +63,6 @@ export function setCookie(
  */
 export function deleteCookie(name: string, path: string = "/"): void {
   if (typeof document === "undefined") return;
-  document.cookie = `${name}=; path=${path}; max-age=0`;
+  const isHttps = window.location.protocol === "https:";
+  document.cookie = `${name}=; path=${path}; max-age=0${isHttps ? "; Secure" : ""}`;
 }

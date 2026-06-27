@@ -21,11 +21,15 @@ export function UpgradeModal() {
     setIsRedirecting(true);
 
     if (checkoutLink) {
-      // Redirect directly to the Polar checkout link
-      window.location.href = checkoutLink;
+      // Redirect directly to the Polar checkout link with pre-filled email
+      const url = new URL(checkoutLink);
+      if (user?.email) {
+        url.searchParams.set("customer_email", user.email);
+      }
+      window.location.href = url.toString();
     } else {
-      // Redirect to our checkout API route, which creates a Polar checkout session
-      window.location.href = `/api/checkout?products=${productId}`;
+      // Redirect to our checkout API route
+      window.location.href = `/api/checkout?products=${productId}${user?.email ? `&customer_email=${encodeURIComponent(user.email)}` : ""}`;
     }
   };
 

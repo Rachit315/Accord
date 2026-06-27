@@ -100,12 +100,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(() => {
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
-      return getCookie("accord_onboarding_completed") === "true";
+      if (getCookie("accord_onboarding_completed") === "true") {
+        setHasCompletedOnboarding(true);
+      }
     }
-    return false;
-  });
+  }, []);
 
   const user = useMemo<UserProfile>(() => {
     if (isSignedIn && clerkUser) {
