@@ -1,25 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Bell,
-  Volume2,
-  VolumeX,
-  Clock,
-  Sparkles,
-  AlertTriangle,
-  Sunrise,
-  Brain,
-  Coffee,
-  BookOpen,
-  Dumbbell,
-  UtensilsCrossed,
-  Laptop,
-  ChefHat,
-  Footprints,
-  Moon,
-} from "lucide-react";
+import { Bell, VolumeX, Clock, Sparkles } from "lucide-react";
 import { useApp } from "@/contexts/app-context";
 import { useAlarm } from "@/hooks/useAlarm";
 import { useNotification } from "@/hooks/useNotification";
@@ -33,19 +16,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Activity } from "@/lib/types";
-
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  Sunrise,
-  Brain,
-  Coffee,
-  BookOpen,
-  Dumbbell,
-  UtensilsCrossed,
-  Laptop,
-  ChefHat,
-  Footprints,
-  Moon,
-};
 
 const iconEmojis: Record<string, string> = {
   Sunrise: "☀️",
@@ -63,7 +33,7 @@ const iconEmojis: Record<string, string> = {
 export function AlarmManager() {
   const { activities } = useApp();
   const { isSupported: notifSupported, permission: notifPermission, requestPermission, sendNotification } = useNotification();
-  const { isEnabled: alarmEnabled, isPlaying: alarmPlaying, play: playAlarm, stop: stopAlarm, primeAudioContext } = useAlarm();
+  const { play: playAlarm, stop: stopAlarm, primeAudioContext } = useAlarm();
 
   const [activeActivity, setActiveActivity] = useState<Activity | null>(null);
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
@@ -178,9 +148,6 @@ export function AlarmManager() {
     localStorage.setItem("accord_alarm_prompt_dismissed", "true");
     setShowPermissionPrompt(false);
   };
-
-  // Icon component lookup helper
-  const IconComponent = activeActivity ? iconMap[activeActivity.icon] || Clock : Clock;
 
   return (
     <>

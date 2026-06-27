@@ -22,9 +22,31 @@ const defaultState: TimerState = {
 };
 
 export function useTimer(onComplete?: () => void) {
-  const [state, setState] = useState<TimerState>(defaultState);
-  const [timeLeft, setTimeLeft] = useState<number>(0);
-  const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const parseInitialTimerState = (): TimerState => {
+    if (typeof window === "undefined") {
+      return defaultState;
+    }
+
+    const storedStr = getCookie(TIMER_STATE_KEY);
+    if (!storedStr) {
+      return defaultState;
+    }
+
+    try {
+      const stored: TimerState = JSON.parse(storedStr);
+      return stored;
+    } catch (e) {
+      console.error("Failed to parse timer state from cookie:", e);
+      return defaultState;
+    }
+  };
+
+  const initialState = parseInitialTimerState();
+  const [state, setState] = useState<TimerState>(initialState);
+  const [timeLeft, setTimeLeft] = useState<number>(initialState.pausedTimeLeft);
+  const [isCompleted, setIsCompleted] = useState<boolean>(() => {
+    return !initialState.isRunning && initialState.pausedTimeLeft === 0 && initialState.startTime !== null;
+  });
   const intervalRef = useRef<number | null>(null);
   const onCompleteRef = useRef<(() => void) | undefined>(onComplete);
 
@@ -32,55 +54,6 @@ export function useTimer(onComplete?: () => void) {
   useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
-
-  // Load state from cookie on mount
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const storedStr = getCookie(TIMER_STATE_KEY);
-    if (storedStr) {
-      try {
-        const stored: TimerState = JSON.parse(storedStr);
-        const now = Date.now();
-
-        if (stored.isRunning && stored.endTime) {
-          if (now >= stored.endTime) {
-            // Completed in background
-            setState({
-              ...stored,
-              isRunning: false,
-            });
-            setTimeLeft(0);
-            setIsCompleted(true);
-            
-            // Trigger completion callback on next tick
-            setTimeout(() => {
-              if (onCompleteRef.current) {
-                onCompleteRef.current();
-              }
-            }, 0);
-            
-            setCookie(
-              TIMER_STATE_KEY,
-              JSON.stringify({ ...stored, isRunning: false, pausedTimeLeft: 0 }),
-              { maxAge: 86400 }
-            );
-          } else {
-            // Still running
-            setState(stored);
-            const remaining = Math.max(0, Math.round((stored.endTime - now) / 1000));
-            setTimeLeft(remaining);
-          }
-        } else {
-          // Paused or not running
-          setState(stored);
-          setTimeLeft(stored.pausedTimeLeft);
-        }
-      } catch (e) {
-        console.error("Failed to parse timer state from cookie:", e);
-      }
-    }
-  }, []);
 
   // Save state to cookie whenever it changes
   const saveState = useCallback((newState: TimerState) => {

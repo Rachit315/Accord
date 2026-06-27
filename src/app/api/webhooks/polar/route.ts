@@ -14,13 +14,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let event: ReturnType<typeof validateEvent>;
+  type PolarWebhookEvent = ReturnType<typeof validateEvent>;
+  let event: PolarWebhookEvent;
 
   const isDev = process.env.NODE_ENV !== "production";
-  const isPlaceholderSecret = !webhookSecret || webhookSecret === "whsec_PASTE_YOUR_SECRET_HERE";
+  const isPlaceholderSecret =
+    !webhookSecret ||
+    webhookSecret === "whsec_PASTE_YOUR_SECRET_HERE" ||
+    webhookSecret.startsWith("http://") ||
+    webhookSecret.startsWith("https://");
 
   if (isPlaceholderSecret && !isDev) {
-    console.error("POLAR_WEBHOOK_SECRET is not set");
+    console.error("POLAR_WEBHOOK_SECRET is missing or invalid");
     return NextResponse.json(
       { error: "Webhook secret not configured" },
       { status: 500 }
@@ -30,7 +35,7 @@ export async function POST(req: NextRequest) {
   try {
     if (isPlaceholderSecret && isDev) {
       console.warn("⚠️ POLAR_WEBHOOK_SECRET is placeholder/unset. Directly parsing body in development.");
-      event = JSON.parse(body) as any;
+      event = JSON.parse(body) as unknown as PolarWebhookEvent;
     } else {
       event = validateEvent(
         body,
@@ -42,7 +47,7 @@ export async function POST(req: NextRequest) {
     if (isDev) {
       console.warn("⚠️ Webhook verification failed in development. Parsing body directly for testing:", error);
       try {
-        event = JSON.parse(body) as any;
+        event = JSON.parse(body) as unknown as PolarWebhookEvent;
       } catch (parseError) {
         console.error("Failed to parse body as JSON:", parseError);
         return NextResponse.json(

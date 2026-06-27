@@ -34,7 +34,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 export default function SchedulePage() {
-  const { activities, deleteActivity, archiveActivity, reorderActivities, isLoading } = useApp();
+  const { activities, deleteActivity, archiveActivity, reorderActivities, isLoading, settings } = useApp();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
 
@@ -331,6 +331,7 @@ export default function SchedulePage() {
 
       {/* Activity Modal */}
       <ActivityModal
+        key={`${modalOpen}-${editingActivity?.id ?? "new"}-${settings.defaultFlexibility}`}
         open={modalOpen}
         onClose={() => {
           setModalOpen(false);

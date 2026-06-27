@@ -118,7 +118,7 @@ function CheckoutSuccessContent() {
             <>
               <h1 className="mb-2 text-2xl font-bold text-destructive">Verification Issue</h1>
               <p className="mb-2 text-muted-foreground">
-                We couldn't verify your payment automatically, but it might still be processing.
+                We couldn&apos;t verify your payment automatically, but it might still be processing.
               </p>
               <p className="mb-6 text-xs text-muted-foreground/80">
                 Detail: {verificationError}

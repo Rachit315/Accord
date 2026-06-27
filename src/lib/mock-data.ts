@@ -8,20 +8,10 @@ import {
   UserProfile,
   PricingPlan,
   Testimonial,
-  EntryStatus,
 } from "./types";
 
 // ── Activities ───────────────────────────────────────────────────────
 export const defaultActivities: Activity[] = [];
-
-// ── Seed-based random for deterministic data ─────────────────────────
-function seededRandom(seed: number): () => number {
-  let s = seed;
-  return () => {
-    s = (s * 16807) % 2147483647;
-    return (s - 1) / 2147483646;
-  };
-}
 
 // ── Generate 90 days of history ──────────────────────────────────────
 function generateHistory(): DayRecord[] {

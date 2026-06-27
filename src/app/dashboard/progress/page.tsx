@@ -365,7 +365,7 @@ export default function ProgressPage() {
               <Tooltip
                 contentStyle={{ backgroundColor: "#13131A", border: "1px solid #2A2A35", borderRadius: "8px", fontSize: "12px" }}
                 labelStyle={{ color: "#F5F5F7" }}
-                formatter={(value: any) => [`${value} min`, "Avg Deviation"]}
+                formatter={(value) => [`${value ?? 0} min`, "Avg Deviation"]}
               />
               <Bar dataKey="avgDeviation" radius={[0, 4, 4, 0]} barSize={18}>
                 {deviationData.map((entry, index) => (

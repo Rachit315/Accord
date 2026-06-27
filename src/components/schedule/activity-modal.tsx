@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Clock, Bell } from "lucide-react";
+import { Loader2, X, Clock, Bell } from "lucide-react";
 import { useApp } from "@/contexts/app-context";
 import { Activity } from "@/lib/types";
 import { formatTime } from "@/lib/utils";
@@ -34,38 +34,24 @@ export function ActivityModal({ open, onClose, activity }: ActivityModalProps) {
   const { addActivity, updateActivity, activities, settings } = useApp();
   const isEditing = !!activity;
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [idealTime, setIdealTime] = useState("08:00");
-  const [flexibility, setFlexibility] = useState(settings.defaultFlexibility);
-  const [icon, setIcon] = useState("Sunrise");
-  const [color, setColor] = useState("#67C587");
-  const [reminder, setReminder] = useState(true);
+  const [title, setTitle] = useState(activity?.title ?? "");
+  const [description, setDescription] = useState(activity?.description ?? "");
+  const [idealTime, setIdealTime] = useState(activity?.idealTime ?? "08:00");
+  const [flexibility, setFlexibility] = useState(
+    activity ? activity.flexibilityWindow : settings.defaultFlexibility
+  );
+  const [icon, setIcon] = useState(activity?.icon ?? "Sunrise");
+  const [color, setColor] = useState(activity?.color ?? "#67C587");
+  const [reminder, setReminder] = useState(activity?.reminderEnabled ?? true);
   const [showPicker, setShowPicker] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (activity) {
-      setTitle(activity.title);
-      setDescription(activity.description);
-      setIdealTime(activity.idealTime);
-      setFlexibility(activity.flexibilityWindow);
-      setIcon(activity.icon);
-      setColor(activity.color);
-      setReminder(activity.reminderEnabled);
-    } else {
-      setTitle("");
-      setDescription("");
-      setIdealTime("08:00");
-      setFlexibility(settings.defaultFlexibility);
-      setIcon("Sunrise");
-      setColor("#67C587");
-      setReminder(true);
-    }
-  }, [activity, open, settings.defaultFlexibility]);
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
     if (!title.trim()) return;
+    setError(null);
 
     // Check for duplicate activity name (excluding current activity if editing)
     const isDuplicate = activities.some(
@@ -76,12 +62,14 @@ export function ActivityModal({ open, onClose, activity }: ActivityModalProps) {
     );
 
     if (isDuplicate) {
-      alert("You cannot make an activity of the same name. Two activities of the same name cannot happen.");
+      setError("Two active activities cannot use the same name.");
       return;
     }
 
+    setIsSaving(true);
+    let saved = false;
     if (isEditing && activity) {
-      updateActivity(activity.id, {
+      saved = await updateActivity(activity.id, {
         title,
         description,
         idealTime,
@@ -91,7 +79,7 @@ export function ActivityModal({ open, onClose, activity }: ActivityModalProps) {
         reminderEnabled: reminder,
       });
     } else {
-      addActivity({
+      saved = await addActivity({
         title,
         description,
         idealTime,
@@ -101,7 +89,12 @@ export function ActivityModal({ open, onClose, activity }: ActivityModalProps) {
         reminderEnabled: reminder,
       });
     }
-    onClose();
+    setIsSaving(false);
+    if (saved) {
+      onClose();
+    } else {
+      setError("We couldn't save this activity. Please check your connection and try again.");
+    }
   };
 
   return (
@@ -167,11 +160,12 @@ export function ActivityModal({ open, onClose, activity }: ActivityModalProps) {
                       <Clock className="mr-1 inline h-3.5 w-3.5" />
                       Ideal Time
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowPicker(true)}
-                      className="h-11 w-full rounded-xl border border-border bg-background/50 px-4 text-sm text-left outline-none transition-colors hover:border-primary/30 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 flex items-center justify-between text-foreground w-full"
-                    >
+                  <button
+                    type="button"
+                    onClick={() => setShowPicker(true)}
+                    disabled={isSaving}
+                    className="flex h-11 w-full items-center justify-between rounded-xl border border-border bg-background/50 px-4 text-left text-sm text-foreground outline-none transition-colors hover:border-primary/30 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-60"
+                  >
                       <span>{formatTime(idealTime)}</span>
                       <Clock className="h-4 w-4 text-muted-foreground" />
                     </button>
@@ -250,12 +244,20 @@ export function ActivityModal({ open, onClose, activity }: ActivityModalProps) {
                   </button>
                 </div>
 
+                {error && (
+                  <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    {error}
+                  </div>
+                )}
+
                 {/* Submit */}
                 <button
                   type="submit"
-                  className="flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90"
+                  disabled={isSaving}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {isEditing ? "Save Changes" : "Create Activity"}
+                  {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {isSaving ? "Saving..." : isEditing ? "Save Changes" : "Create Activity"}
                 </button>
               </form>
             </div>

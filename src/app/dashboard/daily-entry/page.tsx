@@ -16,7 +16,6 @@ import {
   Footprints,
   Moon,
   CheckCircle2,
-  AlertCircle,
   MinusCircle,
   ArrowUp,
   ArrowDown,
@@ -114,7 +113,7 @@ export default function DailyEntryPage() {
             </div>
             <h3 className="mb-2 text-xl font-semibold">No entries for today</h3>
             <p className="max-w-sm text-sm text-muted-foreground">
-              You haven't scheduled any activities for today. Head over to the Schedule tab to start designing your day!
+              You haven&apos;t scheduled any activities for today. Head over to the Schedule tab to start designing your day!
             </p>
             <a
               href="/dashboard/schedule"

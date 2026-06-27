@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Keyboard, Clock as ClockIcon } from "lucide-react";
 
@@ -61,9 +61,21 @@ export function MaterialTimePicker({ open, value, onChange, onClose }: MaterialT
   const [hourText, setHourText] = useState("08");
   const [minuteText, setMinuteText] = useState("00");
 
+  const setSelectedHourAndText = (hour: number) => {
+    setSelectedHour(hour);
+    setHourText(hour.toString().padStart(2, "0"));
+  };
+
+  const setSelectedMinuteAndText = (minute: number) => {
+    setSelectedMinute(minute);
+    setMinuteText(minute.toString().padStart(2, "0"));
+  };
+
   // Load initial value
   useEffect(() => {
-    if (open && value) {
+    if (!(open && value)) return;
+
+    const timeout = window.setTimeout(() => {
       const { hour, minute, ampm: parsedAmpm } = parseTime(value);
       setSelectedHour(hour);
       setSelectedMinute(minute);
@@ -72,17 +84,10 @@ export function MaterialTimePicker({ open, value, onChange, onClose }: MaterialT
       setMinuteText(minute.toString().padStart(2, "0"));
       setMode("hour");
       setKeyboardInput(false);
-    }
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
   }, [open, value]);
-
-  // Sync text inputs with selections
-  useEffect(() => {
-    setHourText(selectedHour.toString().padStart(2, "0"));
-  }, [selectedHour]);
-
-  useEffect(() => {
-    setMinuteText(selectedMinute.toString().padStart(2, "0"));
-  }, [selectedMinute]);
 
   // Position calculation for dial numbers
   const getDialPosition = (index: number) => {
@@ -95,7 +100,7 @@ export function MaterialTimePicker({ open, value, onChange, onClose }: MaterialT
   };
 
   // Drag and click handlers on clock dial
-  const updateValueFromCoords = (clientX: number, clientY: number) => {
+  const updateValueFromCoords = useCallback((clientX: number, clientY: number) => {
     if (!dialRef.current) return;
     const rect = dialRef.current.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
@@ -104,18 +109,18 @@ export function MaterialTimePicker({ open, value, onChange, onClose }: MaterialT
     const dy = clientY - cy;
 
     const angleRad = Math.atan2(dy, dx);
-    let angleDeg = angleRad * (180 / Math.PI);
-    let deg = (angleDeg + 90 + 360) % 360;
+    const angleDeg = angleRad * (180 / Math.PI);
+    const deg = (angleDeg + 90 + 360) % 360;
 
     if (mode === "hour") {
       let hr = Math.round(deg / 30);
       if (hr === 0) hr = 12;
-      setSelectedHour(hr);
+      setSelectedHourAndText(hr);
     } else {
-      let min = Math.round(deg / 6) % 60;
-      setSelectedMinute(min);
+      const min = Math.round(deg / 6) % 60;
+      setSelectedMinuteAndText(min);
     }
-  };
+  }, [mode]);
 
   const handleDialMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -140,7 +145,6 @@ export function MaterialTimePicker({ open, value, onChange, onClose }: MaterialT
 
     const handleMouseUp = () => {
       setIsDragging(false);
-      // Auto switch to minutes after selecting hour
       if (mode === "hour") {
         setTimeout(() => setMode("minute"), 200);
       }
@@ -170,7 +174,7 @@ export function MaterialTimePicker({ open, value, onChange, onClose }: MaterialT
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
     };
-  }, [isDragging, mode]);
+  }, [isDragging, mode, updateValueFromCoords]);
 
   // Submit selections
   const handleSave = () => {

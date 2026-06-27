@@ -39,21 +39,21 @@ interface AppContextType {
 
   // Activities
   activities: Activity[];
-  addActivity: (activity: Omit<Activity, "id" | "order" | "createdAt" | "archived">) => void;
-  updateActivity: (id: string, updates: Partial<Activity>) => void;
-  deleteActivity: (id: string) => void;
-  archiveActivity: (id: string) => void;
-  reorderActivities: (reordered: Activity[]) => void;
+  addActivity: (activity: Omit<Activity, "id" | "order" | "createdAt" | "archived">) => Promise<boolean>;
+  updateActivity: (id: string, updates: Partial<Activity>) => Promise<boolean>;
+  deleteActivity: (id: string) => Promise<boolean>;
+  archiveActivity: (id: string) => Promise<boolean>;
+  reorderActivities: (reordered: Activity[]) => Promise<boolean>;
 
   // Daily Entries
   todayEntries: DailyEntry[];
   allEntries: DailyEntry[];
-  markDone: (entryId: string) => void;
-  skipEntry: (entryId: string) => void;
+  markDone: (entryId: string) => Promise<boolean>;
+  skipEntry: (entryId: string) => Promise<boolean>;
 
   // Settings
   settings: AppSettings;
-  updateSettings: (updates: Partial<AppSettings>) => void;
+  updateSettings: (updates: Partial<AppSettings>) => Promise<boolean>;
   updateProfile: (updates: Partial<UserProfile>) => void;
 
   // Upgrade
@@ -100,15 +100,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      if (getCookie("accord_onboarding_completed") === "true") {
-        setHasCompletedOnboarding(true);
-      }
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(() => {
+    if (typeof window === "undefined") {
+      return false;
     }
-  }, []);
+    return getCookie("accord_onboarding_completed") === "true";
+  });
 
   const user = useMemo<UserProfile>(() => {
     if (isSignedIn && clerkUser) {
@@ -176,16 +173,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [isSignedIn]);
 
   useEffect(() => {
-    if (isLoaded) {
-      refreshData();
-    }
-  }, [isLoaded, isSignedIn, refreshData]);
+    if (!isLoaded) return;
 
-  const signIn = useCallback((_email: string, _password: string) => {
+    const timeout = window.setTimeout(() => {
+      void refreshData();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [isLoaded, refreshData]);
+
+  const signIn = useCallback((email: string, password: string) => {
+    void email;
+    void password;
     // Handled by Clerk redirect
   }, []);
 
-  const signUp = useCallback((_name: string, _email: string, _password: string) => {
+  const signUp = useCallback((name: string, email: string, password: string) => {
+    void name;
+    void email;
+    void password;
     // Handled by Clerk redirect
   }, []);
 
@@ -197,7 +203,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setActivities([]);
     setTodayEntries([]);
     setAllEntries([]);
-    await clerkSignOut();
+    await clerkSignOut({ redirectUrl: "/" });
   }, [clerkSignOut]);
 
   const completeOnboarding = useCallback(() => {
@@ -218,53 +224,91 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async (activity: Omit<Activity, "id" | "order" | "createdAt" | "archived">) => {
       if (user.plan === "free" && activities.filter((a) => !a.archived).length >= 5) {
         setShowUpgradeModal(true);
-        return;
+        return false;
       }
       setIsLoading(true);
       try {
         const todayStr = getLocalDateString();
-        await createActivityAction(activity, todayStr);
+        const created = await createActivityAction(activity, todayStr);
+        setActivities((prev) => [...prev, created].sort((a, b) => a.order - b.order));
+        setTodayEntries((prev) => [
+          ...prev,
+          {
+            id: `pending-${created.id}-${todayStr}`,
+            activityId: created.id,
+            date: todayStr,
+            idealTime: created.idealTime,
+            actualTime: null,
+            status: "pending",
+            deviation: 0,
+            alignmentScore: 0,
+          },
+        ]);
         await refreshData();
+        return true;
       } catch (error) {
         console.error("Error adding activity to DB:", error);
         setIsLoading(false);
+        return false;
       }
     },
     [activities, user.plan, refreshData]
   );
 
   const updateActivity = useCallback(async (id: string, updates: Partial<Activity>) => {
+    const previousActivities = activities;
+    setActivities((prev) => prev.map((activity) => (activity.id === id ? { ...activity, ...updates } : activity)));
     setIsLoading(true);
     try {
-      await updateActivityAction(id, updates);
-      await refreshData();
+      const updated = await updateActivityAction(id, updates);
+      setActivities((prev) => prev.map((activity) => (activity.id === id ? updated : activity)));
+      void refreshData();
+      return true;
     } catch (error) {
       console.error("Error updating activity in DB:", error);
+      setActivities(previousActivities);
       setIsLoading(false);
+      return false;
     }
-  }, [refreshData]);
+  }, [activities, refreshData]);
 
   const deleteActivity = useCallback(async (id: string) => {
+    const previousActivities = activities;
+    const previousTodayEntries = todayEntries;
+    const previousAllEntries = allEntries;
+    setActivities((prev) => prev.filter((activity) => activity.id !== id));
+    setTodayEntries((prev) => prev.filter((entry) => entry.activityId !== id));
+    setAllEntries((prev) => prev.filter((entry) => entry.activityId !== id));
     setIsLoading(true);
     try {
       await deleteActivityAction(id);
-      await refreshData();
+      void refreshData();
+      return true;
     } catch (error) {
       console.error("Error deleting activity in DB:", error);
+      setActivities(previousActivities);
+      setTodayEntries(previousTodayEntries);
+      setAllEntries(previousAllEntries);
       setIsLoading(false);
+      return false;
     }
-  }, [refreshData]);
+  }, [activities, todayEntries, allEntries, refreshData]);
 
   const archiveActivity = useCallback(async (id: string) => {
+    const previousActivities = activities;
+    setActivities((prev) => prev.map((activity) => (activity.id === id ? { ...activity, archived: true } : activity)));
     setIsLoading(true);
     try {
       await updateActivityAction(id, { archived: true });
-      await refreshData();
+      void refreshData();
+      return true;
     } catch (error) {
       console.error("Error archiving activity in DB:", error);
+      setActivities(previousActivities);
       setIsLoading(false);
+      return false;
     }
-  }, [refreshData]);
+  }, [activities, refreshData]);
 
   const reorderActivities = useCallback(async (reordered: Activity[]) => {
     // Optimistic reorder for snappy drag-drop feel
@@ -277,20 +321,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (data) {
         setActivities(data.activities);
       }
+      return true;
     } catch (error) {
       console.error("Error reordering activities in DB:", error);
-      refreshData();
+      void refreshData();
+      return false;
     }
   }, [refreshData]);
 
   const markDone = useCallback(async (entryId: string) => {
     const entry = todayEntries.find((e) => e.id === entryId);
-    if (!entry) return;
+    if (!entry) return false;
 
     const activity = activities.find((a) => a.id === entry.activityId);
-    if (!activity) return;
+    if (!activity) return false;
 
-    setIsLoading(true);
+    const previousTodayEntries = todayEntries;
+    const previousAllEntries = allEntries;
     try {
       // Simulate actual time with realistic variance
       const [ih, im] = entry.idealTime.split(":").map(Number);
@@ -316,34 +363,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ? 100
           : Math.max(0, Math.round(100 - (absDeviation - activity.flexibilityWindow) * 2));
 
+      const optimisticEntry = {
+        ...entry,
+        actualTime,
+        status,
+        deviation,
+        alignmentScore,
+      };
+      setTodayEntries((prev) => prev.map((item) => (item.id === entryId ? optimisticEntry : item)));
+      setAllEntries((prev) => prev.map((item) => (item.id === entryId ? optimisticEntry : item)));
       await saveDailyEntryAction(entryId, {
         actualTime,
         status,
         deviation,
         alignmentScore,
       });
-      await refreshData();
+      void refreshData();
+      return true;
     } catch (error) {
       console.error("Error marking entry done in DB:", error);
-      setIsLoading(false);
+      setTodayEntries(previousTodayEntries);
+      setAllEntries(previousAllEntries);
+      return false;
     }
-  }, [activities, todayEntries, refreshData]);
+  }, [activities, todayEntries, allEntries, refreshData]);
 
   const skipEntry = useCallback(async (entryId: string) => {
-    setIsLoading(true);
+    const previousTodayEntries = todayEntries;
+    const previousAllEntries = allEntries;
     try {
+      const optimistic = (entry: DailyEntry) =>
+        entry.id === entryId
+          ? { ...entry, status: "skipped" as EntryStatus, actualTime: null, deviation: 0, alignmentScore: 0 }
+          : entry;
+      setTodayEntries((prev) => prev.map(optimistic));
+      setAllEntries((prev) => prev.map(optimistic));
       await saveDailyEntryAction(entryId, {
         status: "skipped" as EntryStatus,
         actualTime: null,
         deviation: 0,
         alignmentScore: 0,
       });
-      await refreshData();
+      void refreshData();
+      return true;
     } catch (error) {
       console.error("Error skipping entry in DB:", error);
-      setIsLoading(false);
+      setTodayEntries(previousTodayEntries);
+      setAllEntries(previousAllEntries);
+      return false;
     }
-  }, [refreshData]);
+  }, [todayEntries, allEntries, refreshData]);
 
   const updateSettings = useCallback(async (updates: Partial<AppSettings>) => {
     // Optimistic merge
@@ -359,9 +428,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     try {
       await updateSettingsAction(mergedSettings);
+      return true;
     } catch (error) {
       console.error("Error updating settings in DB:", error);
-      refreshData();
+      void refreshData();
+      return false;
     }
   }, [settings, refreshData]);
 

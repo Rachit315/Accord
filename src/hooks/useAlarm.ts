@@ -6,20 +6,16 @@ import { getCookie, setCookie } from "@/lib/cookies";
 const ALARM_PREF_KEY = "accord_timer_alarm_enabled";
 
 export function useAlarm() {
-  const [enabled, setEnabled] = useState<boolean>(true);
+  const [enabled, setEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") {
+      return true;
+    }
+    const stored = getCookie(ALARM_PREF_KEY);
+    return stored !== null ? stored === "true" : true;
+  });
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const beepIntervalRef = useRef<number | null>(null);
-
-  // Load user preference on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const stored = getCookie(ALARM_PREF_KEY);
-      if (stored !== null) {
-        setEnabled(stored === "true");
-      }
-    }
-  }, []);
 
   // Save preference helper
   const setAlarmEnabled = useCallback((value: boolean) => {
@@ -45,7 +41,15 @@ export function useAlarm() {
   const primeAudioContext = useCallback(() => {
     if (typeof window === "undefined") return;
     if (!audioContextRef.current) {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const win = window as Window & {
+        AudioContext?: {
+          new (contextOptions?: AudioContextOptions): AudioContext;
+        };
+        webkitAudioContext?: {
+          new (contextOptions?: AudioContextOptions): AudioContext;
+        };
+      };
+      const AudioCtx = win.AudioContext || win.webkitAudioContext;
       if (AudioCtx) {
         audioContextRef.current = new AudioCtx();
       }

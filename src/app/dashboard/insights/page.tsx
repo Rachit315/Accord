@@ -121,7 +121,7 @@ export default function InsightsPage() {
           </div>
           <h3 className="mb-2 text-xl font-semibold">Not enough data for insights</h3>
           <p className="max-w-sm text-sm text-muted-foreground">
-            Log your daily activities for a few days, and Accord's AI will start generating smart insights, trends, and improvement tips tailored to your routine.
+            Log your daily activities for a few days, and Accord&apos;s AI will start generating smart insights, trends, and improvement tips tailored to your routine.
           </p>
           <a
             href="/dashboard/daily-entry"

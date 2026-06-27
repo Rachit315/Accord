@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   isNotificationSupported,
   getNotificationPermission,
@@ -9,17 +9,18 @@ import {
 } from "@/lib/notifications";
 
 export function useNotification() {
-  const [supported, setSupported] = useState<boolean>(false);
-  const [permission, setPermission] = useState<NotificationPermission>("default");
-
-  // Sync state on mount
-  useEffect(() => {
-    const isSupported = isNotificationSupported();
-    setSupported(isSupported);
-    if (isSupported) {
-      setPermission(getNotificationPermission());
+  const [supported] = useState<boolean>(() => {
+    if (typeof window === "undefined") {
+      return false;
     }
-  }, []);
+    return isNotificationSupported();
+  });
+  const [permission, setPermission] = useState<NotificationPermission>(() => {
+    if (typeof window === "undefined" || !isNotificationSupported()) {
+      return "default";
+    }
+    return getNotificationPermission();
+  });
 
   const requestPermission = useCallback(async (): Promise<NotificationPermission> => {
     if (!isNotificationSupported()) {

@@ -6,8 +6,9 @@ import { useApp } from "@/contexts/app-context";
 import { useState } from "react";
 
 export function UpgradeModal() {
-  const { showUpgradeModal, setShowUpgradeModal } = useApp();
+  const { showUpgradeModal, setShowUpgradeModal, user } = useApp();
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleUpgrade = () => {
     const checkoutLink = process.env.NEXT_PUBLIC_POLAR_CHECKOUT_LINK;
@@ -15,21 +16,22 @@ export function UpgradeModal() {
 
     if (!checkoutLink && !productId) {
       console.error("Neither NEXT_PUBLIC_POLAR_CHECKOUT_LINK nor NEXT_PUBLIC_POLAR_PRODUCT_ID is set");
+      setError("Checkout is not configured yet. Please try again later.");
       return;
     }
 
+    setError(null);
     setIsRedirecting(true);
 
-    if (checkoutLink) {
+    if (productId) {
+      window.location.href = `/api/checkout?products=${productId}${user?.email ? `&customer_email=${encodeURIComponent(user.email)}` : ""}`;
+    } else if (checkoutLink) {
       // Redirect directly to the Polar checkout link with pre-filled email
       const url = new URL(checkoutLink);
       if (user?.email) {
         url.searchParams.set("customer_email", user.email);
       }
       window.location.href = url.toString();
-    } else {
-      // Redirect to our checkout API route
-      window.location.href = `/api/checkout?products=${productId}${user?.email ? `&customer_email=${encodeURIComponent(user.email)}` : ""}`;
     }
   };
 
@@ -111,6 +113,12 @@ export function UpgradeModal() {
                   </>
                 )}
               </button>
+
+              {error && (
+                <p className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-xs text-destructive">
+                  {error}
+                </p>
+              )}
 
               <p className="mt-3 text-center text-xs text-muted-foreground">
                 Secure checkout powered by Polar • Cancel anytime

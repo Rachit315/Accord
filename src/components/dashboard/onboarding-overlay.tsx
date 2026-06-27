@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
@@ -167,7 +167,7 @@ const tutorialSteps = [
         </motion.div>
         <div className="space-y-1">
           <p className="text-sm font-semibold text-foreground">Ready to design your ideal day?</p>
-          <p className="text-xs text-muted-foreground">Your dashboard is waiting. Let's build some habits!</p>
+          <p className="text-xs text-muted-foreground">Your dashboard is waiting. Let&apos;s build some habits!</p>
         </div>
         <div className="flex justify-center gap-6 pt-2">
           {[
@@ -189,13 +189,7 @@ const tutorialSteps = [
 export function OnboardingOverlay() {
   const { hasCompletedOnboarding, completeOnboarding } = useApp();
   const [currentStep, setCurrentStep] = useState(0);
-  const [isMounted, setIsMounted] = useState(false);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) return null;
   if (hasCompletedOnboarding) return null;
 
   const step = tutorialSteps[currentStep];
