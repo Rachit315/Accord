@@ -32,7 +32,7 @@ export function Sidebar() {
   const { user, setShowUpgradeModal, resetOnboarding } = useApp();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const sidebarContent = (
+  const renderSidebarContent = (isMobile: boolean) => (
     <div className="flex h-full flex-col">
       {/* Logo */}
       <div className="flex h-16 items-center gap-2.5 px-5">
@@ -59,7 +59,7 @@ export function Sidebar() {
             >
               {isActive && (
                 <motion.div
-                  layoutId="sidebar-active"
+                  layoutId={`sidebar-active-${isMobile ? "mobile" : "desktop"}`}
                   className="absolute inset-0 rounded-xl bg-primary/10"
                   transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
                 />
@@ -139,12 +139,12 @@ export function Sidebar() {
 
       {/* Mobile sidebar */}
       <div className={`fixed inset-y-0 left-0 z-40 w-64 border-r border-border bg-card transform transition-transform lg:hidden ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        {sidebarContent}
+        {renderSidebarContent(true)}
       </div>
 
       {/* Desktop sidebar */}
       <div className="hidden w-64 shrink-0 border-r border-border bg-card lg:block">
-        {sidebarContent}
+        {renderSidebarContent(false)}
       </div>
     </>
   );

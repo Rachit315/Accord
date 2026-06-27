@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { getCookie, setCookie } from "@/lib/cookies";
 
 const ALARM_PREF_KEY = "accord_timer_alarm_enabled";
 
@@ -13,7 +14,7 @@ export function useAlarm() {
   // Load user preference on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(ALARM_PREF_KEY);
+      const stored = getCookie(ALARM_PREF_KEY);
       if (stored !== null) {
         setEnabled(stored === "true");
       }
@@ -24,7 +25,7 @@ export function useAlarm() {
   const setAlarmEnabled = useCallback((value: boolean) => {
     setEnabled(value);
     if (typeof window !== "undefined") {
-      localStorage.setItem(ALARM_PREF_KEY, String(value));
+      setCookie(ALARM_PREF_KEY, String(value));
     }
   }, []);
 

@@ -21,6 +21,7 @@ import {
   updateUserPlanAction,
 } from "@/app/actions";
 import { computeStatsAndHistory } from "@/lib/stats";
+import { getCookie, setCookie, deleteCookie } from "@/lib/cookies";
 
 interface AppContextType {
   // Loading state
@@ -101,7 +102,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("accord_onboarding_completed") === "true";
+      return getCookie("accord_onboarding_completed") === "true";
     }
     return false;
   });
@@ -187,7 +188,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     if (typeof window !== "undefined") {
-      localStorage.removeItem("accord_onboarding_completed");
+      deleteCookie("accord_onboarding_completed");
     }
     setProfileUpdates({});
     setActivities([]);
@@ -199,14 +200,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const completeOnboarding = useCallback(() => {
     setHasCompletedOnboarding(true);
     if (typeof window !== "undefined") {
-      localStorage.setItem("accord_onboarding_completed", "true");
+      setCookie("accord_onboarding_completed", "true");
     }
   }, []);
 
   const resetOnboarding = useCallback(() => {
     setHasCompletedOnboarding(false);
     if (typeof window !== "undefined") {
-      localStorage.removeItem("accord_onboarding_completed");
+      deleteCookie("accord_onboarding_completed");
     }
   }, []);
 

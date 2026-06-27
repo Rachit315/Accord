@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { getCookie, setCookie, deleteCookie } from "@/lib/cookies";
 
 const TIMER_STATE_KEY = "accord_timer_state";
 
@@ -32,11 +33,11 @@ export function useTimer(onComplete?: () => void) {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
-  // Load state from localStorage on mount
+  // Load state from cookie on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const storedStr = localStorage.getItem(TIMER_STATE_KEY);
+    const storedStr = getCookie(TIMER_STATE_KEY);
     if (storedStr) {
       try {
         const stored: TimerState = JSON.parse(storedStr);
@@ -59,9 +60,10 @@ export function useTimer(onComplete?: () => void) {
               }
             }, 0);
             
-            localStorage.setItem(
+            setCookie(
               TIMER_STATE_KEY,
-              JSON.stringify({ ...stored, isRunning: false, pausedTimeLeft: 0 })
+              JSON.stringify({ ...stored, isRunning: false, pausedTimeLeft: 0 }),
+              { maxAge: 86400 }
             );
           } else {
             // Still running
@@ -75,15 +77,15 @@ export function useTimer(onComplete?: () => void) {
           setTimeLeft(stored.pausedTimeLeft);
         }
       } catch (e) {
-        console.error("Failed to parse timer state from localStorage:", e);
+        console.error("Failed to parse timer state from cookie:", e);
       }
     }
   }, []);
 
-  // Save state to localStorage whenever it changes
+  // Save state to cookie whenever it changes
   const saveState = useCallback((newState: TimerState) => {
     if (typeof window === "undefined") return;
-    localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(newState));
+    setCookie(TIMER_STATE_KEY, JSON.stringify(newState), { maxAge: 86400 });
   }, []);
 
   // Clear ticking interval
@@ -206,7 +208,7 @@ export function useTimer(onComplete?: () => void) {
     setTimeLeft(0);
     setState(defaultState);
     if (typeof window !== "undefined") {
-      localStorage.removeItem(TIMER_STATE_KEY);
+      deleteCookie(TIMER_STATE_KEY);
     }
   }, [clearInterval]);
 
